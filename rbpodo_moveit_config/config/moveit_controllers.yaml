@@ -1,5 +1,13 @@
 # MoveIt uses this configuration for controller management
 
+# When fake hardware / ros2_control finishes trajectories very fast (or joint_states
+# lags CurrentStateMonitor), the next Execute can fail with:
+#   "Invalid Trajectory: start point deviates from current robot state more than 0.01"
+# even though Plan succeeded (see Desktop/logs3.txt: base expected vs current).
+# Default 0.01 rad is tight for sim; 0.2 rad is a practical tolerance here.
+trajectory_execution:
+  allowed_start_tolerance: 0.2
+
 moveit_controller_manager: moveit_simple_controller_manager/MoveItSimpleControllerManager
 
 moveit_simple_controller_manager:

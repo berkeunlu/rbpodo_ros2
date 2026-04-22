@@ -24,6 +24,7 @@
 #include "rbpodo_msgs/msg/response.hpp"
 #include "rbpodo_msgs/msg/system_state.hpp"
 #include "rbpodo_msgs/srv/eval.hpp"
+#include "std_msgs/msg/float64_multi_array.hpp"
 #include "rbpodo_msgs/srv/set_cartesian_pose_controller_config.hpp"
 #include "rbpodo_msgs/srv/set_cartesian_velocity_controller_config.hpp"
 #include "rbpodo_msgs/srv/set_joint_effort_controller_config.hpp"
@@ -120,6 +121,9 @@ class RobotNode : public rclcpp::Node {
       const rbpodo_msgs::srv::SetCartesianVelocityControllerConfig::Request::SharedPtr& request,
       rbpodo_msgs::srv::SetCartesianVelocityControllerConfig::Response::SharedPtr response);
 
+  // Direct servo control via topic (for real-time teleoperation)
+  void servo_cartesian_callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg);
+
   rclcpp_action::GoalResponse move_j_handle_goal(const rclcpp_action::GoalUUID& uuid,
                                                  std::shared_ptr<const MoveJ::Goal> goal);
 
@@ -165,6 +169,11 @@ class RobotNode : public rclcpp::Node {
   std::thread msg_thread_;
 
   rclcpp::Publisher<rbpodo_msgs::msg::Response>::SharedPtr res_publisher_;
+  rclcpp::Publisher<rbpodo_msgs::msg::SystemState>::SharedPtr state_publisher_;
+  rclcpp::TimerBase::SharedPtr state_timer_;
+  
+  // Servo control subscriber for real-time teleoperation
+  rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr servo_cartesian_sub_;
 
   rclcpp::Service<rbpodo_msgs::srv::SetOperationMode>::SharedPtr set_operation_mode_srv_;
   rclcpp::Service<rbpodo_msgs::srv::SetSpeedBar>::SharedPtr set_speed_bar_srv_;
@@ -188,16 +197,6 @@ class RobotNode : public rclcpp::Node {
   rclcpp_action::Server<MoveL>::SharedPtr move_l_server_;
   rclcpp_action::Server<MoveJb2>::SharedPtr move_jb2_server_;
   rclcpp_action::Server<MovePb>::SharedPtr move_pb_server_;
-};
-
-class RobotExecutor : public rclcpp::executors::MultiThreadedExecutor {
- public:
-  RobotExecutor();
-
-  ~RobotExecutor() override;
-
- private:
-  std::thread thread_;
 };
 
 }  // namespace rbpodo_hardware

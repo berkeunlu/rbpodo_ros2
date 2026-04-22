@@ -14,12 +14,26 @@
 * limitations under the License.
 */
 
+#include <chrono>
+#include <cctype>
+#include <algorithm>
+#include <string>
+
 #include "rbpodo_hardware/rbpodo_hardware_interface.hpp"
 
 namespace {
 template <typename ArrayLike>
 bool isValidCommand(const ArrayLike& arr) {
   return std::all_of(arr.begin(), arr.end(), [](double value) { return std::isfinite(value) && !std::isnan(value); });
+}
+
+/// ROS / xacro may pass "true", "True", "1", "false", "False", "0" as strings.
+bool parse_bool_param(const std::string& v) {
+  std::string s = v;
+  for (char& c : s) {
+    c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+  }
+  return s == "true" || s == "1" || s == "yes";
 }
 }  // namespace
 
@@ -50,7 +64,11 @@ RBPodoHardwareInterface::RBPodoHardwareInterface() {
   command_interface_infos_.push_back(cvc_info);
 }
 
-RBPodoHardwareInterface::~RBPodoHardwareInterface() = default;
+RBPodoHardwareInterface::~RBPodoHardwareInterface() {
+  if (robot_node_) {
+    robot_spin_.remove_node(robot_node_->get_node_base_interface());
+  }
+}
 
 hardware_interface::CallbackReturn RBPodoHardwareInterface::on_init(const hardware_interface::HardwareInfo& info) {
   if (hardware_interface::SystemInterface::on_init(info) != CallbackReturn::SUCCESS) {
@@ -77,7 +95,7 @@ hardware_interface::CallbackReturn RBPodoHardwareInterface::on_init(const hardwa
       return CallbackReturn::ERROR;
     }
     try {
-      cb_simulation = (info_.hardware_parameters.at("cb_simulation") == "True");
+      cb_simulation = parse_bool_param(info_.hardware_parameters.at("cb_simulation"));
     } catch (const std::out_of_range& ex) {
       RCLCPP_FATAL(getLogger(), "Parameter 'cb_simulation' is not set");
       return CallbackReturn::ERROR;
@@ -96,9 +114,8 @@ hardware_interface::CallbackReturn RBPodoHardwareInterface::on_init(const hardwa
   }
 
   robot_node_ = std::make_shared<RobotNode>(rclcpp::NodeOptions(), robot_);
-  robot_executor_ = std::make_shared<RobotExecutor>();
-  robot_executor_->add_node(robot_node_);
-  RCLCPP_INFO(getLogger(), "Robot node start ...");
+  robot_spin_.add_node(robot_node_->get_node_base_interface());
+  RCLCPP_INFO(getLogger(), "Robot node added to hardware spin executor (serviced each read())");
 
   return hardware_interface::CallbackReturn::SUCCESS;
 }
@@ -262,6 +279,10 @@ hardware_interface::return_type RBPodoHardwareInterface::read(const rclcpp::Time
                                                               const rclcpp::Duration& period) {
   (void)time;
   (void)period;
+  if (robot_node_) {
+    // Service move_j / subscriptions on the controller_manager update thread (non-blocking slice).
+    robot_spin_.spin_some(std::chrono::nanoseconds(0));
+  }
   auto data = robot_->read_once();
   for (size_t i = 0; i < kNumberOfJoints; i++) {
     hw_position_states_[i] = data.sdata.jnt_ref[i] * DEG2RAD;
@@ -277,7 +298,6 @@ hardware_interface::return_type RBPodoHardwareInterface::write(const rclcpp::Tim
                                                                const rclcpp::Duration& period) {
   (void)time;
   (void)period;
-  
   if (!robot_) {
     RCLCPP_ERROR(getLogger(), "Robot is not initialized yet");
     return hardware_interface::return_type::ERROR;
@@ -314,19 +334,19 @@ hardware_interface::return_type RBPodoHardwareInterface::write(const rclcpp::Tim
   }
 
   if (isValidCommand(hw_position_commands_) && joint_position_interface_state_.running) {
-    robot_->write_once_joint_positions(hw_position_commands_, period.seconds());
+    robot_->write_once_joint_positions(hw_position_commands_);
   }
   if (isValidCommand(hw_velocity_commands_) && joint_velocity_interface_state_.running) {
-    robot_->write_once_joint_velocities(hw_velocity_commands_, period.seconds());
+    robot_->write_once_joint_velocities(hw_velocity_commands_);
   }
   if (isValidCommand(hw_effort_commands_) && joint_effort_interface_state_.running) {
-    robot_->write_once_joint_efforts(hw_effort_commands_, period.seconds());
+    robot_->write_once_joint_efforts(hw_effort_commands_);
   }
   if (isValidCommand(hw_cartesian_pose_commands_) && cartesian_pose_interface_state_.running) {
-    robot_->write_once_cartesian_pose(hw_cartesian_pose_commands_, period.seconds());
+    robot_->write_once_cartesian_pose(hw_cartesian_pose_commands_);
   }
   if (isValidCommand(hw_cartesian_velocity_commands_) && cartesian_velocity_interface_state_.running) {
-    robot_->write_once_cartesian_velocity(hw_cartesian_velocity_commands_, period.seconds());
+    robot_->write_once_cartesian_velocity(hw_cartesian_velocity_commands_);
   }
   return hardware_interface::return_type::OK;
 }

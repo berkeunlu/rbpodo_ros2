@@ -45,7 +45,8 @@ Robot::Robot(const string& ip, bool simulation, const rclcpp::Logger& logger)
   } else {
     set_operation_mode(OperationMode::Real);
   }
-  set_speed_bar(1.0);
+  // Don't override the speed bar — let the user's setting on the teach pendant persist.
+  // set_speed_bar(1.0);
 
   read_thread_stop_.store(false);
   read_thread_ = thread([this]() {
@@ -240,7 +241,13 @@ rb::podo::SystemState Robot::read_once() {
   scoped_lock sl(read_lock_);
   auto elapsed = chrono::steady_clock::now() - state_updated_time_;
   double elapsed_in_sec = chrono::duration_cast<chrono::nanoseconds>(elapsed).count() / 1.e9;
-  RCLCPP_WARN_EXPRESSION(getLogger(), elapsed_in_sec > 0.1, "state was updataed %lf seconds ago (it may cause problem)",
+  // Background request_data() can blip past 100 ms under Rainbow CB TCP jitter
+  // without actually affecting the 100 Hz controller loop. 250 ms is a better
+  // threshold for "genuinely stale" — that's ~5 ros2_control cycles behind, by
+  // which point joint_state_broadcaster is visibly lagging too. Use WARN_THROTTLE
+  // so we don't spam the log for recurring minor blips.
+  RCLCPP_WARN_EXPRESSION(getLogger(), elapsed_in_sec > 0.25,
+                         "Rainbow state was updated %.3f s ago — background read thread is lagging",
                          elapsed_in_sec);
   return state_;
 }
@@ -251,30 +258,30 @@ void Robot::wait_for_update() {
   read_cv_.wait(ul, [&] { return updated_; });
 }
 
-bool Robot::write_once_joint_positions(const array<double, kNumberOfJoints>& positions, double period_seconds) {
+bool Robot::write_once_joint_positions(const array<double, kNumberOfJoints>& positions) {
   scoped_lock sl(lock_);
-  auto ret = cobot_.move_servo_j(rc_, convert_to_degree(positions), period_seconds, period_seconds * 2.0, jpc_config_.gain,
+  auto ret = cobot_.move_servo_j(rc_, convert_to_degree(positions), jpc_config_.t1, jpc_config_.t2, jpc_config_.gain,
                                  jpc_config_.alpha);
   rc_error_check();
   return ret.is_success();
 }
 
-bool Robot::write_once_joint_velocities(const array<double, kNumberOfJoints>& velocities, double period_seconds) {
+bool Robot::write_once_joint_velocities(const array<double, kNumberOfJoints>& velocities) {
   scoped_lock sl(lock_);
-  auto ret = cobot_.move_speed_j(rc_, convert_to_degree(velocities), period_seconds, period_seconds * 2.0, jvc_config_.gain,
+  auto ret = cobot_.move_speed_j(rc_, convert_to_degree(velocities), jvc_config_.t1, jvc_config_.t2, jvc_config_.gain,
                                  jvc_config_.alpha);
   rc_error_check();
   return ret.is_success();
 }
 
-bool Robot::write_once_joint_efforts(const array<double, kNumberOfJoints>& efforts, double period_seconds) {
+bool Robot::write_once_joint_efforts(const array<double, kNumberOfJoints>& efforts) {
   scoped_lock sl(lock_);
-  auto ret = cobot_.move_servo_t(rc_, efforts, period_seconds, period_seconds * 2.0, jec_config_.compensation_mode);
+  auto ret = cobot_.move_servo_t(rc_, efforts, jec_config_.t1, jec_config_.t2, jec_config_.compensation_mode);
   rc_error_check();
   return ret.is_success();
 }
 
-bool Robot::write_once_cartesian_pose(const array<double, k6DoFDim>& pose, double period_seconds) {
+bool Robot::write_once_cartesian_pose(const array<double, k6DoFDim>& pose) {
   scoped_lock sl(lock_);
   array<double, k6DoFDim> p;
   p[0] = pose[0] * METER2MILLIMETER;
@@ -283,12 +290,12 @@ bool Robot::write_once_cartesian_pose(const array<double, k6DoFDim>& pose, doubl
   p[3] = pose[3] * RAD2DEG;
   p[4] = pose[4] * RAD2DEG;
   p[5] = pose[5] * RAD2DEG;
-  auto ret = cobot_.move_servo_l(rc_, p, period_seconds, period_seconds * 2.0, cpc_config_.gain, cpc_config_.alpha);
+  auto ret = cobot_.move_servo_l(rc_, p, cpc_config_.t1, cpc_config_.t2, cpc_config_.gain, cpc_config_.alpha);
   rc_error_check();
   return ret.is_success();
 }
 
-bool Robot::write_once_cartesian_velocity(const array<double, k6DoFDim>& velocity, double period_seconds) {
+bool Robot::write_once_cartesian_velocity(const array<double, k6DoFDim>& velocity) {
   scoped_lock sl(lock_);
   array<double, k6DoFDim> v;
   v[0] = velocity[0] * METER2MILLIMETER;
@@ -297,7 +304,7 @@ bool Robot::write_once_cartesian_velocity(const array<double, k6DoFDim>& velocit
   v[3] = velocity[3] * RAD2DEG;
   v[4] = velocity[4] * RAD2DEG;
   v[5] = velocity[5] * RAD2DEG;
-  auto ret = cobot_.move_servo_l(rc_, v, period_seconds, period_seconds * 2.0, cvc_config_.gain, cvc_config_.alpha);
+  auto ret = cobot_.move_servo_l(rc_, v, cvc_config_.t1, cvc_config_.t2, cvc_config_.gain, cvc_config_.alpha);
   rc_error_check();
   return ret.is_success();
 }

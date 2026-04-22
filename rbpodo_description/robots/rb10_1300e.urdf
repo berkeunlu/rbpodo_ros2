@@ -227,4 +227,35 @@
       <state_interface name="effort"/>
     </joint>
   </ros2_control>
+  <!-- ══════════════════════════════════════════════════════════════════
+       ZED Mini mount. This flat URDF is a stale snapshot; the live system
+       loads rb10_1300e.urdf.xacro, which uses the zed_macro from
+       zed-ros2-wrapper. Keep this file only as a reference skeleton —
+       link geometry of the ZED body comes from
+       $(find zed_msgs)/meshes/zedm.stl at runtime.
+       ══════════════════════════════════════════════════════════════════ -->
+  <link name="camera_mount_link">
+    <visual>
+      <geometry>
+        <box size="0.025 0.090 0.025"/>
+      </geometry>
+      <material name="dark_grey">
+        <color rgba="0.3 0.3 0.3 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.030 0.095 0.030"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.072"/>
+      <inertia ixx="0.00001" ixy="0.0" ixz="0.0" iyy="0.00001" iyz="0.0" izz="0.00001"/>
+    </inertial>
+  </link>
+  <joint name="link6_to_camera_mount" type="fixed">
+    <parent link="link6"/>
+    <child link="camera_mount_link"/>
+    <origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.0"/>
+  </joint>
 </robot>
