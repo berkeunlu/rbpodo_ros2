@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SRDF robot name must match the root <robot name="..."> from the processed URDF (model_id). -->
+<!-- xacro:arg / xacro:property MUST live inside <robot>: multiple top-level elements are invalid
+     XML and xacro aborts with "junk after document element" (launch then reports junk after line 9). -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="$(arg model_id)">
+    <xacro:arg name="model_id" default="rb5_850e"/>
+    <xacro:property name="srdf_model_id" value="$(arg model_id)"/>
+    <group name="manipulation">
+        <chain base_link="link0" tip_link="tcp"/>
+    </group>
+    <virtual_joint name="fixed_joint" type="fixed" parent_frame="world" child_link="link0"/>
+    <disable_collisions link1="link0" link2="link1" reason="Adjacent"/>
+    <disable_collisions link1="link0" link2="link2" reason="Never"/>
+    <disable_collisions link1="link0" link2="link3" reason="Never"/>
+    <disable_collisions link1="link1" link2="link2" reason="Adjacent"/>
+    <disable_collisions link1="link1" link2="link3" reason="Never"/>
+    <disable_collisions link1="link2" link2="link3" reason="Adjacent"/>
+    <disable_collisions link1="link3" link2="link4" reason="Adjacent"/>
+    <disable_collisions link1="link3" link2="link5" reason="Never"/>
+    <disable_collisions link1="link3" link2="link6" reason="Never"/>
+    <disable_collisions link1="link4" link2="link5" reason="Adjacent"/>
+    <disable_collisions link1="link4" link2="link6" reason="Never"/>
+    <disable_collisions link1="link5" link2="link6" reason="Adjacent"/>
+
+    <!--
+      rb10_1300e: ZED Mini + bracket collision meshes overlap link6 / upper arm in the default
+      URDF. That puts the *start state* in self-collision, so OMPL cannot initialize the start
+      tree ("plan timeout" ~0s, "camera_mount_link found a contact"). Disable arm ↔ sensor links
+      for planning (same idea as Setup Assistant ACM for a fixed camera rig).
+    -->
+    <xacro:if value="${srdf_model_id == 'rb10_1300e'}">
+      <disable_collisions link1="link6" link2="camera_mount_link" reason="Adjacent"/>
+      <disable_collisions link1="camera_mount_link" link2="zedm_camera_link" reason="Adjacent"/>
+      <!-- mount → link → center are three solids; ACM is pairwise only, so mount↔center is NOT
+           implied by mount↔link + link↔center. Without this line, logs2.txt: start state collision
+           camera_mount_link vs zedm_camera_center → OMPL "invalid start state". -->
+      <disable_collisions link1="camera_mount_link" link2="zedm_camera_center" reason="Adjacent"/>
+      <disable_collisions link1="zedm_camera_link" link2="zedm_camera_center" reason="Adjacent"/>
+      <disable_collisions link1="zedm_camera_center" link2="zedm_left_camera_frame" reason="Adjacent"/>
+      <disable_collisions link1="zedm_left_camera_frame" link2="zedm_left_camera_optical_frame" reason="Adjacent"/>
+
+      <disable_collisions link1="link0" link2="camera_mount_link" reason="Never"/>
+      <disable_collisions link1="link1" link2="camera_mount_link" reason="Never"/>
+      <disable_collisions link1="link2" link2="camera_mount_link" reason="Never"/>
+      <disable_collisions link1="link3" link2="camera_mount_link" reason="Never"/>
+      <disable_collisions link1="link4" link2="camera_mount_link" reason="Never"/>
+      <disable_collisions link1="link5" link2="camera_mount_link" reason="Never"/>
+      <disable_collisions link1="link6" link2="zedm_camera_link" reason="Never"/>
+      <disable_collisions link1="link5" link2="zedm_camera_link" reason="Never"/>
+      <disable_collisions link1="link4" link2="zedm_camera_link" reason="Never"/>
+      <disable_collisions link1="link3" link2="zedm_camera_link" reason="Never"/>
+      <disable_collisions link1="link2" link2="zedm_camera_link" reason="Never"/>
+      <disable_collisions link1="link1" link2="zedm_camera_link" reason="Never"/>
+      <disable_collisions link1="link0" link2="zedm_camera_link" reason="Never"/>
+      <disable_collisions link1="tcp" link2="camera_mount_link" reason="Never"/>
+      <disable_collisions link1="tcp" link2="zedm_camera_link" reason="Never"/>
+      <disable_collisions link1="tcp" link2="zedm_camera_center" reason="Never"/>
+      <disable_collisions link1="tcp" link2="zedm_left_camera_frame" reason="Never"/>
+      <disable_collisions link1="tcp" link2="zedm_left_camera_optical_frame" reason="Never"/>
+      <disable_collisions link1="tcp" link2="camera_link" reason="Never"/>
+      <disable_collisions link1="tcp" link2="camera_depth_optical_frame" reason="Never"/>
+
+      <disable_collisions link1="link0" link2="zedm_camera_center" reason="Never"/>
+      <disable_collisions link1="link1" link2="zedm_camera_center" reason="Never"/>
+      <disable_collisions link1="link2" link2="zedm_camera_center" reason="Never"/>
+      <disable_collisions link1="link3" link2="zedm_camera_center" reason="Never"/>
+      <disable_collisions link1="link4" link2="zedm_camera_center" reason="Never"/>
+      <disable_collisions link1="link5" link2="zedm_camera_center" reason="Never"/>
+      <disable_collisions link1="link6" link2="zedm_camera_center" reason="Never"/>
+
+      <disable_collisions link1="link0" link2="zedm_left_camera_frame" reason="Never"/>
+      <disable_collisions link1="link1" link2="zedm_left_camera_frame" reason="Never"/>
+      <disable_collisions link1="link2" link2="zedm_left_camera_frame" reason="Never"/>
+      <disable_collisions link1="link3" link2="zedm_left_camera_frame" reason="Never"/>
+      <disable_collisions link1="link4" link2="zedm_left_camera_frame" reason="Never"/>
+      <disable_collisions link1="link5" link2="zedm_left_camera_frame" reason="Never"/>
+      <disable_collisions link1="link6" link2="zedm_left_camera_frame" reason="Never"/>
+
+      <disable_collisions link1="link0" link2="zedm_left_camera_optical_frame" reason="Never"/>
+      <disable_collisions link1="link1" link2="zedm_left_camera_optical_frame" reason="Never"/>
+      <disable_collisions link1="link2" link2="zedm_left_camera_optical_frame" reason="Never"/>
+      <disable_collisions link1="link3" link2="zedm_left_camera_optical_frame" reason="Never"/>
+      <disable_collisions link1="link4" link2="zedm_left_camera_optical_frame" reason="Never"/>
+      <disable_collisions link1="link5" link2="zedm_left_camera_optical_frame" reason="Never"/>
+      <disable_collisions link1="link6" link2="zedm_left_camera_optical_frame" reason="Never"/>
+
+      <disable_collisions link1="link0" link2="camera_link" reason="Never"/>
+      <disable_collisions link1="link1" link2="camera_link" reason="Never"/>
+      <disable_collisions link1="link2" link2="camera_link" reason="Never"/>
+      <disable_collisions link1="link3" link2="camera_link" reason="Never"/>
+      <disable_collisions link1="link4" link2="camera_link" reason="Never"/>
+      <disable_collisions link1="link5" link2="camera_link" reason="Never"/>
+      <disable_collisions link1="link6" link2="camera_link" reason="Never"/>
+
+      <disable_collisions link1="link0" link2="camera_depth_optical_frame" reason="Never"/>
+      <disable_collisions link1="link1" link2="camera_depth_optical_frame" reason="Never"/>
+      <disable_collisions link1="link2" link2="camera_depth_optical_frame" reason="Never"/>
+      <disable_collisions link1="link3" link2="camera_depth_optical_frame" reason="Never"/>
+      <disable_collisions link1="link4" link2="camera_depth_optical_frame" reason="Never"/>
+      <disable_collisions link1="link5" link2="camera_depth_optical_frame" reason="Never"/>
+      <disable_collisions link1="link6" link2="camera_depth_optical_frame" reason="Never"/>
+    </xacro:if>
+</robot>

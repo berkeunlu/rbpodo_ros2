@@ -13,7 +13,6 @@ from launch.substitutions import (
     TextSubstitution,
 )
 from launch_ros.actions import Node
-from launch_ros.parameter_descriptions import ParameterValue
 from launch_ros.substitutions import FindPackageShare
 import xacro
 
@@ -130,7 +129,7 @@ def generate_launch_description():
                 executable="robot_state_publisher",
                 name="robot_state_publisher",
                 output="both",
-                parameters=[{"robot_description": ParameterValue(robot_description, value_type=str)}],
+                parameters=[{"robot_description": robot_description}],
             ),
             Node(
                 package="joint_state_publisher",
