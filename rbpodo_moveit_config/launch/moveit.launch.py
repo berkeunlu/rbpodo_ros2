@@ -1,4 +1,6 @@
 import os
+from pathlib import Path
+
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
@@ -68,6 +70,18 @@ def generate_launch_description():
 
 
 def launch_setup(context, *args, **kwargs):
+    model = LaunchConfiguration("model_id").perform(context)
+    urdf_path = (
+        Path(get_package_share_directory("rbpodo_description"))
+        / "robots"
+        / f"{model}.urdf.xacro"
+    )
+    if not urdf_path.is_file():
+        raise FileNotFoundError(
+            f"MoveIt: no URDF for model_id={model!r} at {urdf_path}. "
+            "Add that file under rbpodo_description/robots/ or fix the model_id launch arg."
+        )
+
     mappings = {
         "robot_ip": robot_ip,
         "use_fake_hardware": use_fake_hardware,
@@ -78,7 +92,14 @@ def launch_setup(context, *args, **kwargs):
 
     moveit_config = (
         MoveItConfigsBuilder("rbpodo")
-        .robot_description(file_path="config/rbpodo.urdf.xacro", mappings=mappings)
+        # Load the real model URDF (single root <robot>) from rbpodo_description.
+        # config/rbpodo.urdf.xacro used to be a thin wrapper with several top-level
+        # xacro:arg tags — that is invalid XML ("junk after document element" at
+        # line 9) and breaks xacro before MoveIt even gets robot_description.
+        .robot_description(file_path=str(urdf_path), mappings=mappings)
+        .robot_description_semantic(
+            file_path="config/rbpodo.srdf.xacro", mappings=mappings
+        )
         .trajectory_execution(file_path="config/moveit_controllers.yaml")
         .planning_scene_monitor(
             publish_robot_description=True, publish_robot_description_semantic=True
