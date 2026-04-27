@@ -26,7 +26,6 @@
 #include "rbpodo_hardware/robot.hpp"
 #include "rbpodo_hardware/robot_node.hpp"
 #include "rbpodo_hardware/visibility_control.h"
-#include "rclcpp/executors/single_threaded_executor.hpp"
 #include "rclcpp/macros.hpp"
 #include "rclcpp/rclcpp.hpp"
 
@@ -126,10 +125,9 @@ class RBPodoHardwareInterface : public hardware_interface::SystemInterface {
   std::array<double, kNumberOfJoints> hw_position_states_;
   std::array<double, kNumberOfJoints> hw_effort_states_;
 
-  // ROS Node — spun from read() (ros2_control update thread). A background executor thread
-  // inside the plugin often never services DDS/action endpoints reliably.
+  // ROS Node
   std::shared_ptr<RobotNode> robot_node_;
-  rclcpp::executors::SingleThreadedExecutor robot_spin_;
+  std::shared_ptr<RobotExecutor> robot_executor_;
 };
 
 }  // namespace rbpodo_hardware

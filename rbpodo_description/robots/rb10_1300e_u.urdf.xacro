@@ -10,15 +10,6 @@
   <xacro:arg name="use_fake_hardware" default="true"/>
   <xacro:arg name="fake_sensor_commands" default="false"/>
 
-  <!-- Stereolabs ZED Mini on link6 — same mount as rb10_1300e.urdf.xacro.
-       Lens look (zedm +X) = link6 −Y  →  rpy=(0, 0, −π/2) on link6→camera_mount. -->
-  <xacro:arg name="cam_x" default="0.0"/>
-  <xacro:arg name="cam_y" default="-0.08"/>
-  <xacro:arg name="cam_z" default="0.0"/>
-  <xacro:arg name="cam_roll" default="0.0"/>
-  <xacro:arg name="cam_pitch" default="0.0"/>
-  <xacro:arg name="cam_yaw" default="-1.5707963267948966"/>
-
   <!-- torque_constant = actual_torque_constant * gear_ratio -->
   <xacro:property name="base_tc" value="${1}" />
   <xacro:property name="shoulder_tc" value="${1}" />
@@ -27,14 +18,17 @@
   <xacro:property name="wrist2_tc" value="${1}" />
   <xacro:property name="wrist3_tc" value="${1}" />
 
+  <xacro:arg name="cam_x" default="0.0"/>
+  <xacro:arg name="cam_y" default="-0.08"/>
+  <xacro:arg name="cam_z" default="0.0"/>
+  <xacro:arg name="cam_roll" default="0.0"/>
+  <xacro:arg name="cam_pitch" default="0.0"/>
+  <xacro:arg name="cam_yaw" default="-1.5707963267948966"/>
+
   <xacro:rb_6dof model_id="rb10_1300e_u" prefix="$(arg prefix)" tcp_name="tcp" tcp_xyz="0 -0.1153 0" tcp_rpy="0 0 0" />
   <xacro:rb_6dof_ros2_control prefix="$(arg prefix)" robot_ip="$(arg robot_ip)" cb_simulation="$(arg cb_simulation)" use_fake_hardware="$(arg use_fake_hardware)" fake_sensor_commands="$(arg fake_sensor_commands)" torque_constants="${[base_tc, shoulder_tc, elbow_tc, wrist1_tc, wrist2_tc, wrist3_tc]}" />
 
-  <!-- ══════════════════════════════════════════════════════════════════
-       ZED Mini mount — SELF-CONTAINED (no zed_msgs STL). Matches rb10_1300e.
-       ══════════════════════════════════════════════════════════════════ -->
-
-  <xacro:property name="M_PI" value="3.1415926535897931"/>
+ <xacro:property name="M_PI" value="3.1415926535897931"/>
 
   <link name="$(arg prefix)camera_mount_link">
     <visual>
@@ -62,4 +56,5 @@
     <origin xyz="$(arg cam_x) $(arg cam_y) $(arg cam_z)"
             rpy="$(arg cam_roll) $(arg cam_pitch) $(arg cam_yaw)"/>
   </joint>
+
 </robot>

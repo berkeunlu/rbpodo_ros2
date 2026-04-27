@@ -9,12 +9,53 @@
     <!--JOINTS: When a joint is specified, the child link of that joint (which will always exist) is automatically included-->
     <!--CHAINS: When a chain is specified, all the links along the chain (including endpoints) are included in the group. Additionally, all the joints that are parents to included links are also included. This means that joints along the chain and the parent joint of the base link are included in the group-->
     <!--SUBGROUPS: Groups can also be formed by referencing to already defined group names-->
-    <group name="mainpulation">
+    <group name="manipulation">
         <chain base_link="link0" tip_link="tcp"/>
     </group>
     <!--VIRTUAL JOINT: Purpose: this element defines a virtual joint between a robot link and an external frame of reference (considered fixed with respect to the robot)-->
     <virtual_joint name="fixed_joint" type="fixed" parent_frame="world" child_link="link0"/>
     <!--DISABLE COLLISIONS: By default it is assumed that any link of the robot could potentially come into collision with any other link in the robot. This tag disables collision checking between a specified pair of links. -->
+    <group_state name="DefaultStart" group="manipulation">
+        <joint name="base" value="-1.57"/>
+        <joint name="elbow" value="1.57"/>
+        <joint name="shoulder" value="0"/>
+        <joint name="wrist1" value="-1.57"/>
+        <joint name="wrist2" value="1.57"/>
+        <joint name="wrist3" value="0"/>
+    </group_state>
+    <group_state name="GoalOne" group="manipulation">
+        <joint name="base" value="-1.57"/>
+        <joint name="elbow" value="1.3"/>
+        <joint name="shoulder" value="0.27"/>
+        <joint name="wrist1" value="-1.57"/>
+        <joint name="wrist2" value="1.57"/>
+        <joint name="wrist3" value="0"/>
+    </group_state>
+    <group_state name="GoalTwo" group="manipulation">
+        <joint name="base" value="-1.47"/>
+        <joint name="elbow" value="1.57"/>
+        <joint name="shoulder" value="0"/>
+        <joint name="wrist1" value="-1.57"/>
+        <joint name="wrist2" value="1.57"/>
+        <joint name="wrist3" value="0"/>
+    </group_state>
+    <group_state name="CaptureOne" group="manipulation">
+        <joint name="base" value="-1.57"/>
+        <joint name="elbow" value="2.07"/>
+        <joint name="shoulder" value="-0.4"/>
+        <joint name="wrist1" value="-1.57"/>
+        <joint name="wrist2" value="1.57"/>
+        <joint name="wrist3" value="0"/>
+    </group_state>
+    <group_state name="CaptureTwo" group="manipulation">
+        <joint name="base" value="-0.7113"/>
+        <joint name="elbow" value="1.9256"/>
+        <joint name="shoulder" value="0.6419"/>
+        <joint name="wrist1" value="-1.57"/>
+        <joint name="wrist2" value="1.57"/>
+        <joint name="wrist3" value="0"/>
+    </group_state>
+    
     <disable_collisions link1="link0" link2="link1" reason="Adjacent"/>
     <disable_collisions link1="link0" link2="link2" reason="Never"/>
     <disable_collisions link1="link0" link2="link3" reason="Never"/>

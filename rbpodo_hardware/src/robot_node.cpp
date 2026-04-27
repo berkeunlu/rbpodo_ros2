@@ -26,22 +26,6 @@ namespace rbpodo_hardware {
 RobotNode::RobotNode(const rclcpp::NodeOptions& options, shared_ptr<Robot> robot)
     : rclcpp::Node("rbpodo_hardware", options), robot_(robot), res_receiver_(robot_->ip()) {
   res_publisher_ = this->create_publisher<rbpodo_msgs::msg::Response>("~/response", 10);
-  
-  // Publish robot system state at 50Hz for external nodes (e.g., hand teleoperation)
-  state_publisher_ = this->create_publisher<rbpodo_msgs::msg::SystemState>("~/system_state", 10);
-  state_timer_ = this->create_wall_timer(20ms, [this]() {
-    auto state = robot_->read_once();
-    auto msg = convert_to_ros_msg(state);
-    state_publisher_->publish(msg);
-  });
-  
-  // Servo control subscriber for real-time teleoperation
-  // Accepts Float64MultiArray with 6 values: [x, y, z, rx, ry, rz] in meters and radians
-  servo_cartesian_sub_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
-    "~/servo_cartesian", rclcpp::SensorDataQoS(),
-    std::bind(&RobotNode::servo_cartesian_callback, this, _1));
-  RCLCPP_INFO(get_logger(), "Servo cartesian topic: ~/servo_cartesian");
-  
   //
   run_ = true;
   msg_thread_ = thread([this]() {
@@ -709,23 +693,16 @@ void RobotNode::move_pb_execute(const std::shared_ptr<GoalHandleMovePb> goal_han
   }
 }
 
-void RobotNode::servo_cartesian_callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg) {
-  // Servo cartesian pose: [x, y, z, rx, ry, rz] in meters and radians
-  if (msg->data.size() != 6) {
-    RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 1000, 
-                         "servo_cartesian expects 6 values [x,y,z,rx,ry,rz], got %zu", msg->data.size());
-    return;
+RobotExecutor::RobotExecutor() {
+  thread_ = thread([this]() { spin(); });
+}
+
+RobotExecutor::~RobotExecutor() {
+  if (spinning) {
+    cancel();
   }
-  
-  std::array<double, 6> pose;
-  for (size_t i = 0; i < 6; i++) {
-    pose[i] = msg->data[i];
-  }
-  
-  // Call write_once_cartesian_pose which sends servo_l command
-  bool success = robot_->write_once_cartesian_pose(pose);
-  if (!success) {
-    RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 1000, "servo_cartesian command failed");
+  if (thread_.joinable()) {
+    thread_.join();
   }
 }
 
